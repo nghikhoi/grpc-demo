@@ -15,7 +15,7 @@ public class SyncBenchmark extends BaseBenchmark {
 
     @Setup(Level.Trial)
     public void setupServer() {
-        setupBeforeBenchmark(1);
+        setupBeforeBenchmark(1000, 1, 1);
         stub = client.getBlockingStub();
     }
 
@@ -28,7 +28,7 @@ public class SyncBenchmark extends BaseBenchmark {
     @Benchmark
     @CompilerControl(CompilerControl.Mode.BREAK)
     public void blockingStubBenchmark() {
-        for (int i = 0; i < MESSAGE_AMOUNT; i++) {
+        for (int i = 0; i < messageAmount; i++) {
             results.add(stub.greetWithResponse(newMessage()));
         }
     }

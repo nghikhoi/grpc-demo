@@ -76,6 +76,8 @@ test {
 
 jmh {
     excludes = ['SyncBenchmark']
+    resultFormat = 'json'
+    forceGC = true
     warmupIterations = 2
     iterations = 5
     fork = 1

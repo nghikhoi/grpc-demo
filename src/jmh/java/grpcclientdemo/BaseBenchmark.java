@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 
 public class BaseBenchmark {
 
-    protected final static int MESSAGE_AMOUNT = 1000;
+    protected int messageAmount = 1000;
 
     protected Queue<String> messages = new ConcurrentLinkedQueue<>();
     protected GrpcClient client;
@@ -22,15 +22,16 @@ public class BaseBenchmark {
         return RandomStringUtils.randomAlphanumeric(256);
     }
 
-    protected synchronized void setupBeforeBenchmark(int threadCount) {
-        for (int i = 0; i < MESSAGE_AMOUNT; i++) {
+    protected synchronized void setupBeforeBenchmark(int messageAmount, int threadCount, long handleWait) {
+        this.messageAmount = messageAmount;
+        for (int i = 0; i < messageAmount; i++) {
             messages.add(RandomStringUtils.randomAlphanumeric(256));
         }
 
         if (client == null && server == null) {
-            final int port = RandomUtils.nextInt(50000, 60000);
+            final int port = RandomUtils.nextInt(50000, 50050);
 
-            server = GrpcServer.newInstance(port, threadCount);
+            server = GrpcServer.newInstance("-port", String.valueOf(port), "-thread", String.valueOf(threadCount), "-handlewait", String.valueOf(handleWait));
             Executors.newSingleThreadExecutor().execute(() -> {
                 try {
                     server.start();

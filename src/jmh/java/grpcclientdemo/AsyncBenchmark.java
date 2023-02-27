@@ -16,6 +16,13 @@ public class AsyncBenchmark extends BaseBenchmark {
     private GreetClient stub;
 
     /**
+     * b: blocking stub
+     * f: future stub
+     */
+    @Param({"b", "f"})
+    private String stubType;
+
+    /**
      * Number of threads to use for the server
      * <1: use cached thread pool
      * >=1: use fixed thread pool
@@ -23,12 +30,18 @@ public class AsyncBenchmark extends BaseBenchmark {
     @Param({"-1", "1", "5", "10"})
     private int threadCount;
 
-    @Param({"b", "f"})
-    private String stubType;
+    @Param({"1", "100", "1000"})
+    private int messageAmount;
+
+    /**
+     * Time to wait in the server before sending response (unit = milliseconds)
+     */
+    @Param({"1"})
+    private long handleWait;
 
     @Setup(Level.Trial)
     public void setupServer() {
-        setupBeforeBenchmark(threadCount);
+        setupBeforeBenchmark(messageAmount, threadCount, handleWait);
         responses.clear();
         stub = client.getGreetClient(stubType);
     }
@@ -42,7 +55,7 @@ public class AsyncBenchmark extends BaseBenchmark {
 
     @Benchmark
     public void send() {
-        for (int i = 0; i < MESSAGE_AMOUNT; i++) {
+        for (int i = 0; i < messageAmount; i++) {
             responses.add(stub.greetFuture(newMessage()));
         }
 

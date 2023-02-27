@@ -19,6 +19,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScans;
 
 import java.io.IOException;
 import java.util.Queue;
@@ -36,10 +38,15 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
     }
 
     public static GrpcServer newInstance(int port, int threadCount) {
-        ApplicationContext context = SpringApplication.run(GrpcServer.class, "-port", String.valueOf(port), "-thread", String.valueOf(threadCount));
+        return newInstance("-port", String.valueOf(port), "-thread", String.valueOf(threadCount));
+    }
+
+    public static GrpcServer newInstance(String... args) {
+        ApplicationContext context = SpringApplication.run(GrpcServer.class, args);
         return context.getBean(GrpcServer.class);
     }
 
+    private long handleWait = TimeUnit.MILLISECONDS.toMillis(5);
     private int port = 50051;
     private int threadCount = 1;
     private Server server;
@@ -130,11 +137,16 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
             threadOption.setRequired(false);
             options.addOption(threadOption);
 
+            Option handleWaitOption = new Option("handlewait", "handlewait", true, "Handle wait time");
+            handleWaitOption.setRequired(false);
+            options.addOption(handleWaitOption);
+
             CommandLineParser parser = new DefaultParser();
             CommandLine cli = parser.parse(options, args);
 
             port = Integer.parseInt(cli.getOptionValue("port", "50051"));
             threadCount = Integer.parseInt(cli.getOptionValue("thread", "1"));
+            handleWait = Long.parseLong(cli.getOptionValue("handlewait", "5"));
         }
     }
 
@@ -150,7 +162,7 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
             String handleId = Thread.currentThread().getId() + ":" + System.currentTimeMillis();
             log.debug("Handle request {} with message {}", handleId, PRINTER.print(req));
             HelloResponse reply = HelloResponse.newBuilder().setMessage("Hello " + req.getName() + ": " + RandomStringUtils.random(256)).build();
-            Thread.sleep(TimeUnit.MILLISECONDS.toMillis(5));
+            Thread.sleep(handleWait);
             log.debug("Sending response {} with message {}", handleId, PRINTER.print(reply));
             responseObserver.onNext(reply);
             responseObserver.onCompleted();
