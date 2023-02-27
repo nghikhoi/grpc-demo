@@ -1,84 +1,25 @@
-plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.0.2'
-    id 'io.spring.dependency-management' version '1.1.0'
-    id 'com.google.protobuf' version '0.9.2'
-    id 'me.champeau.jmh' version '0.6.8'
-}
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
 
-group = 'me.nghikhoi'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
+    group = 'me.nghikhoi.grpcdemo'
+    version = '0.0.1-SNAPSHOT'
 
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
-}
+    sourceCompatibility = 1.17
+    targetCompatibility = 1.17
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
-    jmh 'org.openjdk.jmh:jmh-core:1.19'
-    jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.19'
-    jmh 'org.projectlombok:lombok'
-
-    implementation 'commons-cli:commons-cli:1.5.0'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
-
-    runtimeOnly 'io.grpc:grpc-netty-shaded:1.52.1'
-    implementation 'com.google.protobuf:protobuf-java-util:3.22.0'
-    implementation 'io.grpc:grpc-protobuf:1.52.1'
-    implementation 'io.grpc:grpc-stub:1.52.1'
-    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
-}
-
-springBoot {
-    mainClass = 'me.nghikhoi.grpcdemo.GrpcDemoApplication'
-}
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.22.0'
-    }
-
-    plugins {
-        grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.53.0'
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
         }
     }
 
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                java {
-                }
-            }
-
-            task.plugins {
-                grpc {
-                }
-            }
-        }
+    repositories {
+        mavenLocal()
+        mavenCentral()
     }
-}
 
-test {
-    useJUnitPlatform()
-}
-
-jmh {
-    excludes = ['SyncBenchmark']
-    resultFormat = 'json'
-    forceGC = true
-    warmupIterations = 2
-    iterations = 5
-    fork = 1
+    test {
+        useJUnitPlatform()
+    }
 }

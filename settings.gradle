@@ -1,1 +1,9 @@
 rootProject.name = 'grpc-demo'
+
+include(':common')
+include(':proto')
+
+include(':client')
+include(':server')
+
+include(':benchmark')
