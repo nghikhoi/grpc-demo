@@ -30,6 +30,7 @@ dependencies {
     jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.19'
     jmh 'org.projectlombok:lombok'
 
+    implementation 'commons-cli:commons-cli:1.5.0'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
 
     runtimeOnly 'io.grpc:grpc-netty-shaded:1.52.1'
@@ -37,6 +38,10 @@ dependencies {
     implementation 'io.grpc:grpc-protobuf:1.52.1'
     implementation 'io.grpc:grpc-stub:1.52.1'
     compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+}
+
+springBoot {
+    mainClass = 'me.nghikhoi.grpcdemo.GrpcDemoApplication'
 }
 
 protobuf {
@@ -70,7 +75,8 @@ test {
 }
 
 jmh {
-    warmupIterations = 1
+    excludes = ['SyncBenchmark']
+    warmupIterations = 2
     iterations = 5
     fork = 1
 }
