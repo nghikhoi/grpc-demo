@@ -9,6 +9,7 @@ public class ApplicationArguments {
     public static final String PORT = "port";
     public static final String THREAD = "thread";
     public static final String HANDLE_WAIT = "handlewait";
+    public static final String CLIENT_USE_CONSOLE = "useconsole";
 
     public static Builder builder() {
         return new Builder();
@@ -23,12 +24,13 @@ public class ApplicationArguments {
             return this;
         }
 
-        public String build() {
-            StringJoiner sb = new StringJoiner(" ");
+        public String[] build() {
+            String[] result = new String[args.size()];
+            int i = 0;
             for (Map.Entry<String, Object> entry : args.entrySet()) {
-                sb.add("--" + entry.getKey() + "=" + entry.getValue());
+                result[i++] = String.format("--%s=%s", entry.getKey(), entry.getValue().toString());
             }
-            return sb.toString().trim();
+            return result;
         }
 
     }

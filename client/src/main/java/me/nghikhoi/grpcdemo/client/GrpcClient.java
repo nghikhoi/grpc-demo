@@ -24,24 +24,14 @@ import java.util.regex.Pattern;
 
 @SpringBootApplication
 @Slf4j
-public class GrpcClient extends AbstractSpringApplication implements CommandLineRunner {
+public class GrpcClient extends AbstractSpringApplication {
 
-    public static GrpcClient newInstance(int port) {
-        ApplicationContext context = SpringApplication.run(GrpcClient.class, "-port", String.valueOf(port));
+    public static GrpcClient newInstance(String... args) {
+        ApplicationContext context = SpringApplication.run(GrpcClient.class, args);
         return context.getBean(GrpcClient.class);
     }
 
-    private int port;
     private boolean useConsole = true;
-    private ManagedChannel channel;
-    @Getter
-    private BlockingGreeter blockingStub;
-    @Getter
-    private AsyncGreeter asyncStub;
-    @Getter
-    private FutureGreeter futureStub;
-
-    private ExecutorService blockingExecutor;
 
     public GrpcClient(ApplicationContext context) {
         super(context);
@@ -55,16 +45,11 @@ public class GrpcClient extends AbstractSpringApplication implements CommandLine
             return;
         }
 
-        channel = ManagedChannelBuilder.forAddress("localhost", port)
-                .usePlaintext()
-                .build();
+        if (getContext().getBean(ManagedChannel.class).isShutdown()) {
+            throw new IllegalStateException("Channel is shutdown");
+        }
 
-        blockingExecutor = Executors.newCachedThreadPool();
-        blockingStub = new BlockingGreeter(GreeterGrpc.newBlockingStub(channel), blockingExecutor);
-        asyncStub = new AsyncGreeter(GreeterGrpc.newStub(channel));
-        futureStub = new FutureGreeter(GreeterGrpc.newFutureStub(channel));
-
-        if (useConsole) {
+        if (getContext().getBean("useConsole", boolean.class)) {
             Scanner scanner = new Scanner(System.in);
             while (started) {
                 String input = scanner.nextLine();
@@ -76,15 +61,15 @@ public class GrpcClient extends AbstractSpringApplication implements CommandLine
             }
         }
 
-        log.info("Client started");
+        log.info("Client started on port " + getContext().getBean("serverPort", int.class));
         started = true;
     }
 
     public void shutdown() {
         log.info("Shutting down");
         started = false;
-        channel.shutdown();
-        blockingExecutor.shutdown();
+        getContext().getBean(ManagedChannel.class).shutdown();
+        getContext().getBean(ExecutorService.class).shutdown();
     }
 
     private final Pattern pattern = Pattern.compile("(?:([a-z])?(\\d+):)?(.*)");
@@ -120,30 +105,17 @@ public class GrpcClient extends AbstractSpringApplication implements CommandLine
     }
 
     public GreetClient getGreetClient(String type) {
-        GreetClient client = this.getBlockingStub();
+        GreetClient client = getContext().getBean("blockingClient", GreetClient.class);
         if (type != null) {
             if (type.equals("a")) {
-                client = this.getAsyncStub();
+                client = getContext().getBean("asyncClient", GreetClient.class);
             } else if (type.equals("b")) {
-                client = this.getBlockingStub();
+                client = getContext().getBean("blockingClient", GreetClient.class);
             } else if (type.equals("f")) {
-                client = this.getFutureStub();
+                client = getContext().getBean("futureClient", GreetClient.class);
             }
         }
         return client;
-    }
-
-    @Override
-    public void run(String... args) throws Exception {
-        if (args != null) {
-            Options options = OptionHelper.newGeneralOptions();
-            CommandLineParser parser = new DefaultParser();
-            CommandLine cli = parser.parse(options, args);
-
-            port = Integer.parseInt(cli.getOptionValue("port", "50051"));
-        }
-
-        start();
     }
 
 }

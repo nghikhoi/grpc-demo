@@ -1,5 +1,6 @@
 package me.nghikhoi.grpcdemo.benchmark;
 
+import me.nghikhoi.grpcdemo.ApplicationArguments;
 import me.nghikhoi.grpcdemo.client.GrpcClient;
 import me.nghikhoi.grpcdemo.server.GrpcServer;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -9,6 +10,8 @@ import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
+
+import static me.nghikhoi.grpcdemo.ApplicationArguments.*;
 
 public class BaseBenchmark {
 
@@ -31,7 +34,11 @@ public class BaseBenchmark {
         if (client == null && server == null) {
             final int port = RandomUtils.nextInt(50000, 50050);
 
-            server = GrpcServer.newInstance("-port", String.valueOf(port), "-thread", String.valueOf(threadCount), "-handlewait", String.valueOf(handleWait));
+            server = GrpcServer.newInstance(ApplicationArguments.builder()
+                    .put(PORT, port)
+                    .put(THREAD, threadCount)
+                    .put(HANDLE_WAIT, handleWait)
+                    .build());
             Executors.newSingleThreadExecutor().execute(() -> {
                 try {
                     server.start();
@@ -39,7 +46,17 @@ public class BaseBenchmark {
                     throw new RuntimeException(e);
                 }
             });
-            client = GrpcClient.newInstance(port);
+            while (!server.isStarted()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            client = GrpcClient.newInstance(ApplicationArguments.builder()
+                    .put(PORT, port)
+                    .build());
+            client.start();
         }
     }
 

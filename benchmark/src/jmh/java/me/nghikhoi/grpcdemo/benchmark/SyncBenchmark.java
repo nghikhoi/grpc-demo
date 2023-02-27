@@ -1,6 +1,7 @@
 package me.nghikhoi.grpcdemo.benchmark;
 
 import me.nghikhoi.grpcdemo.client.BlockingGreeter;
+import me.nghikhoi.grpcdemo.client.GreetClient;
 import org.openjdk.jmh.annotations.*;
 
 import java.util.Queue;
@@ -10,13 +11,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @BenchmarkMode(Mode.SingleShotTime)
 public class SyncBenchmark extends BaseBenchmark {
 
-    private BlockingGreeter stub;
+    private GreetClient stub;
     private Queue<String> results = new ConcurrentLinkedQueue<>();
 
     @Setup(Level.Trial)
     public void setupServer() {
         setupBeforeBenchmark(1000, 1, 1);
-        stub = client.getBlockingStub();
+        stub = client.getGreetClient("b");
     }
 
     @TearDown(Level.Trial)
@@ -29,7 +30,7 @@ public class SyncBenchmark extends BaseBenchmark {
     @CompilerControl(CompilerControl.Mode.BREAK)
     public void blockingStubBenchmark() {
         for (int i = 0; i < messageAmount; i++) {
-            results.add(stub.greetWithResponse(newMessage()));
+            results.add(stub.greet(newMessage()));
         }
     }
 

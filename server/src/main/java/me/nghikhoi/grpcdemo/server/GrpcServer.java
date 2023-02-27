@@ -5,16 +5,11 @@ import com.google.rpc.ErrorInfo;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.examples.helloworld.GreeterGrpc;
-import io.grpc.examples.helloworld.HelloRequest;
-import io.grpc.examples.helloworld.HelloResponse;
-import io.grpc.stub.StreamObserver;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import me.nghikhoi.grpcdemo.AbstractSpringApplication;
 import me.nghikhoi.grpcdemo.OptionHelper;
 import org.apache.commons.cli.*;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -29,14 +24,14 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 @Slf4j
-public class GrpcServer extends AbstractSpringApplication implements CommandLineRunner {
+public class GrpcServer extends AbstractSpringApplication {
 
     public GrpcServer(ApplicationContext context) {
         super(context);
     }
 
     public static GrpcServer newInstance(int port, int threadCount) {
-        return newInstance("-port", String.valueOf(port), "-thread", String.valueOf(threadCount));
+        return newInstance("--port=" + port, "--thread=" + threadCount);
     }
 
     public static GrpcServer newInstance(String... args) {
@@ -44,11 +39,6 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
         return context.getBean(GrpcServer.class);
     }
 
-    private long handleWait = TimeUnit.MILLISECONDS.toMillis(5);
-    private int port = 50051;
-    private int threadCount = 1;
-    private Server server;
-    private ExecutorService executorService;
     @Getter
     private boolean started = false;
 
@@ -57,31 +47,27 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
             return;
         }
 
-        executorService = threadCount < 1 ? Executors.newCachedThreadPool() : Executors.newFixedThreadPool(threadCount);
-        ServerBuilder<?> builder = ServerBuilder.forPort(port)
-                .addService(new GreeterImpl())
-                .intercept(new LoggingInterceptor())
-                .executor(executorService);
-
-        server = builder.build();
-
+        Server server = getHandleServer();
         server.start();
         started = true;
-        log.info("Server started, listening on " + port);
+        log.info("Server started, listening on " + getContext().getBean("serverPort", int.class));
 
         blockUntilShutdown();
     }
 
-    public void shutdown() {
-        if (server != null) {
-            server.shutdown();
-            executorService.shutdown();
-        }
+    protected Server getHandleServer() {
+        return getContext().getBean(Server.class);
     }
 
-    @Getter
-    private Queue<HandleProfile> executeProfiles = new ConcurrentLinkedQueue<>();
+    public void shutdown() {
+        getHandleServer().shutdown();
+
+        ExecutorService executorService = getContext().getBean(ExecutorService.class);
+        executorService.shutdown();
+    }
+
     public void summaryExecuteTimes() {
+        Queue<HandleProfile> executeProfiles = getContext().getBean(GreeterImpl.class).getExecuteProfiles();
         int size = executeProfiles.size();
         long total = 0;
         long min = Long.MAX_VALUE;
@@ -107,13 +93,11 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
     }
 
     public boolean isShutdown() {
-        return server == null || server.isShutdown();
+        return getHandleServer().isShutdown();
     }
 
     private void blockUntilShutdown() throws InterruptedException {
-        if (server != null) {
-            server.awaitTermination();
-        }
+        getHandleServer().awaitTermination();
     }
 
     private static final JsonFormat.TypeRegistry TYPE_REGISTRY =
@@ -124,50 +108,5 @@ public class GrpcServer extends AbstractSpringApplication implements CommandLine
                     .omittingInsignificantWhitespace()
                     .includingDefaultValueFields()
                     .usingTypeRegistry(TYPE_REGISTRY);
-
-    @Override
-    public void run(String... args) throws Exception {
-        if (args != null) {
-            Options options = OptionHelper.newGeneralOptions();
-
-            Option threadOption = new Option("thread", "thread", true, "Thread count");
-            threadOption.setRequired(false);
-            options.addOption(threadOption);
-
-            Option handleWaitOption = new Option("handlewait", "handlewait", true, "Handle wait time");
-            handleWaitOption.setRequired(false);
-            options.addOption(handleWaitOption);
-
-            CommandLineParser parser = new DefaultParser();
-            CommandLine cli = parser.parse(options, args);
-
-            port = Integer.parseInt(cli.getOptionValue("port", "50051"));
-            threadCount = Integer.parseInt(cli.getOptionValue("thread", "1"));
-            handleWait = Long.parseLong(cli.getOptionValue("handlewait", "5"));
-        }
-    }
-
-    private class GreeterImpl extends GreeterGrpc.GreeterImplBase {
-
-        @Override
-        @SneakyThrows
-        public void sayHello(HelloRequest req, StreamObserver<HelloResponse> responseObserver) {
-            HandleProfile handleProfile = new HandleProfile();
-            handleProfile.setThreadId(Thread.currentThread().getId());
-            handleProfile.setStartTime(System.currentTimeMillis());
-
-            String handleId = Thread.currentThread().getId() + ":" + System.currentTimeMillis();
-            log.debug("Handle request {} with message {}", handleId, PRINTER.print(req));
-            HelloResponse reply = HelloResponse.newBuilder().setMessage("Hello " + req.getName() + ": " + RandomStringUtils.random(256)).build();
-            Thread.sleep(handleWait);
-            log.debug("Sending response {} with message {}", handleId, PRINTER.print(reply));
-            responseObserver.onNext(reply);
-            responseObserver.onCompleted();
-
-            handleProfile.setEndTime(System.currentTimeMillis());
-            executeProfiles.add(handleProfile);
-        }
-
-    }
 
 }
